@@ -1,7 +1,6 @@
 'use strict';
 
 export class Converter {
-    
     fromJava(text, drawable) {}
     
     toJava(drawable) {

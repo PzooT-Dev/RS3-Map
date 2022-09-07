@@ -1,11 +1,7 @@
 'use strict';
 
-import {Position} from './Position.js';
-
 export class Path {
-
-    constructor(map) {
-        this.map = map;
+    constructor() {
         this.featureGroup = new L.FeatureGroup();
         this.positions = [];
         this.lines = [];
@@ -14,7 +10,7 @@ export class Path {
 
     add(position) {
         this.positions.push(position);
-        var rectangle = position.toLeaflet(this.map);
+        const rectangle = position.toLeaflet();
         this.featureGroup.addLayer(rectangle);
         this.rectangles.push(rectangle);
 
@@ -37,6 +33,6 @@ export class Path {
     }
 
     createPolyline(startPosition, endPosition) {
-        return L.polyline([startPosition.toCentreLatLng(this.map), endPosition.toCentreLatLng(this.map)], {clickable: false});
+        return L.polyline([startPosition.toCentreLatLng(), endPosition.toCentreLatLng()], {clickable: false});
     }
 }

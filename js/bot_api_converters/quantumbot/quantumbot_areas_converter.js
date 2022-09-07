@@ -1,12 +1,10 @@
 'use strict';
 
 import {Area} from '../../model/Area.js';
-import {Areas} from '../../model/Areas.js';
 import {Position} from '../../model/Position.js';
 import {OSBotAreasConverter} from '../osbot/osbot_areas_converter.js';
 
 export class QuantumBotAreasConverter extends OSBotAreasConverter {
-    
     constructor() {
         super();
         this.javaArea = "Area";
@@ -28,21 +26,19 @@ export class QuantumBotAreasConverter extends OSBotAreasConverter {
     fromJava(text, areas) {        
         areas.removeAll();
         text = text.replace(/\s/g, '');
-        
-        var areasPattern = ``
-        
-        var areasPattern = `(?:new${this.javaArea}\\((\\d+,\\d+,\\d+,\\d+(?:,\\d+)?)\\)|\\(new${this.javaPosition}\\((\\d+,\\d+,\\d)\\),new${this.javaPosition}\\((\\d+,\\d+,\\d)\\)(?:,(\\d))?\\))`;
-        var re = new RegExp(areasPattern,"mg");
-        var match;
+
+        let areasPattern = `(?:new${this.javaArea}\\((\\d+,\\d+,\\d+,\\d+(?:,\\d+)?)\\)|\\(new${this.javaPosition}\\((\\d+,\\d+,\\d)\\),new${this.javaPosition}\\((\\d+,\\d+,\\d)\\)(?:,(\\d))?\\))`;
+        const re = new RegExp(areasPattern, 'mg');
+        let match;
         while ((match = re.exec(text))) {
             if (match[1] !== undefined) {
-                var values = match[1].split(",");
-                var z = values.length == 4 ? 0 : values[4];
-                areas.add(new Area(new Position(values[0], values[1], z), new Position(values[2], values[3], z)));
+                const values = match[1].split(',');
+                const plane = values.length === 4 ? 0 : values[4];
+                areas.add(new Area(new Position(values[0], values[1], plane), new Position(values[2], values[3], plane)));
             } else {
-                var pos1Values = match[2].split(",");
-                var pos2Values = match[3].split(",");
-                
+                const pos1Values = match[2].split(',');
+                const pos2Values = match[3].split(',');
+
                 if (match[4] !== undefined) {
                     pos1Values[2] = match[4];
                     pos2Values[2] = match[4];
@@ -54,9 +50,9 @@ export class QuantumBotAreasConverter extends OSBotAreasConverter {
     }
     
     toJavaSingle(area) {
-        if (area.startPosition.z == 0) {
+        if (area.startPosition.plane === 0) {
             return `new ${this.javaArea}(${area.startPosition.x}, ${area.startPosition.y}, ${area.endPosition.x}, ${area.endPosition.y})`;
         }
-        return `new ${this.javaArea}(${area.startPosition.x}, ${area.startPosition.y}, ${area.endPosition.x}, ${area.endPosition.y}, ${area.endPosition.z})`;
+        return `new ${this.javaArea}(${area.startPosition.x}, ${area.startPosition.y}, ${area.endPosition.x}, ${area.endPosition.y}, ${area.endPosition.plane})`;
     }
 }

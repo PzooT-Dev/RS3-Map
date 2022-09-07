@@ -3,23 +3,21 @@
 import {Position} from './Position.js';
 
 export class Area {
-
     constructor(startPosition, endPosition) {
         this.startPosition = startPosition;
         this.endPosition = endPosition;
     }
 
-    static fromBounds(map, bounds) {
+    static fromBounds(bounds) {
         return new Area(
-            map,
-            Position.fromLatLng(map, bounds.getSouthWest()),
-            Position.fromLatLng(map, bounds.getNorthEast())
+            Position.fromLatLng(bounds.getSouthWest()),
+            Position.fromLatLng(bounds.getNorthEast())
         );
     }
 
-    toLeaflet(map) {
-        var newStartPosition = new Position(this.startPosition.x, this.startPosition.y, this.startPosition.z);
-        var newEndPosition = new Position(this.endPosition.x, this.endPosition.y, this.startPosition.z);
+    toLeaflet() {
+        const newStartPosition = new Position(this.startPosition.x, this.startPosition.y, this.startPosition.plane);
+        const newEndPosition = new Position(this.endPosition.x, this.endPosition.y, this.startPosition.plane);
 
         if (this.endPosition.x >= this.startPosition.x) {
             newEndPosition.x += 1;
@@ -35,8 +33,8 @@ export class Area {
 
         return L.rectangle(
             L.latLngBounds(
-                newStartPosition.toLatLng(map),
-                newEndPosition.toLatLng(map)
+                newStartPosition.toLatLng(),
+                newEndPosition.toLatLng()
             ), {
                 color: "#33b5e5",
                 weight: 1,

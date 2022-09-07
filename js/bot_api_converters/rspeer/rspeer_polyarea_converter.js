@@ -1,11 +1,9 @@
 'use strict';
 
-import {PolyArea} from '../../model/PolyArea.js';
 import {Position} from '../../model/Position.js';
 import {OSBotPolyAreaConverter} from '../osbot/osbot_polyarea_converter.js';
 
 export class RSPeerPolyAreaConverter extends OSBotPolyAreaConverter {
-
     constructor() {
         super();
         this.javaArea = "Area";
@@ -26,41 +24,39 @@ export class RSPeerPolyAreaConverter extends OSBotPolyAreaConverter {
     fromJava(text, polyarea) {
         polyarea.removeAll();
         text = text.replace(/\s/g, '');
-        
-        var floorLevelPattern = `${this.javaArea}\\.polygonal\\((\\d),`;
-        var re = new RegExp(floorLevelPattern, "mg");
-        var match = re.exec(text);
-        
-        var floorLevel = undefined;
-        
+
+        const floorLevelPattern = `${this.javaArea}\\.polygonal\\((\\d),`;
+        let re = new RegExp(floorLevelPattern, 'mg');
+        let match = re.exec(text);
+
+        let floorLevel = undefined;
         if (match) {
             floorLevel = match[1];    
         }
 
-        var positionsPattern = `new${this.javaPosition}\\((\\d+,\\d+(?:,\\d)?)\\)`;
-        var re = new RegExp(positionsPattern, "mg");
-        var match;
+        const positionsPattern = `new${this.javaPosition}\\((\\d+,\\d+(?:,\\d)?)\\)`;
+        re = new RegExp(positionsPattern, 'mg');
         while ((match = re.exec(text))) {
-            var values = match[1].split(",");
-            
-            var z = values.length == 2 ? 0 : values[2];
-            
+            const values = match[1].split(',');
+
+            let plane = values.length === 2 ? 0 : values[2];
+
             if (floorLevel !== undefined) {
-                z = floorLevel;
+                plane = floorLevel;
             }
             
-            polyarea.add(new Position(values[0], values[1], z));
+            polyarea.add(new Position(values[0], values[1], plane));
         }
     }
     
     toJava(polyarea) {
-        if (polyarea.positions.length == 0) {
+        if (polyarea.positions.length === 0) {
             return "";
         }
-        var output = `${this.javaArea} area = ${this.javaArea}.polygonal(\n    new ${this.javaPosition}[] {`;
-        for (var i = 0; i < polyarea.positions.length; i++) {
-            var position = polyarea.positions[i];
-            output += `\n        new ${this.javaPosition}(${position.x}, ${position.y}, ${position.z})`;
+        let output = `${this.javaArea} area = ${this.javaArea}.polygonal(\n    new ${this.javaPosition}[] {`;
+        for (let i = 0; i < polyarea.positions.length; i++) {
+            const position = polyarea.positions[i];
+            output += `\n        new ${this.javaPosition}(${position.x}, ${position.y}, ${position.plane})`;
             if (i !== polyarea.positions.length - 1) {
                 output += ",";
             }

@@ -1,12 +1,7 @@
 'use strict';
 
-import {Area} from './Area.js';
-import {Position} from './Position.js';
-
 export class Areas {
-
-    constructor(map) {
-        this.map = map;
+    constructor() {
         this.featureGroup = new L.FeatureGroup();
         this.areas = [];
         this.rectangles = [];
@@ -14,7 +9,7 @@ export class Areas {
 
     add(area) {
         this.areas.push(area);
-        var rectangle = area.toLeaflet(this.map);
+        const rectangle = area.toLeaflet();
         this.rectangles.push(rectangle);
         this.featureGroup.addLayer(rectangle);
     }

@@ -1,11 +1,7 @@
 'use strict';
 
-import {Position, RS_TILE_WIDTH_PX, RS_TILE_HEIGHT_PX} from './Position.js';
-
 export class PolyArea {
-
-    constructor(map) {
-        this.map = map;
+    constructor() {
         this.positions = [];
         this.polygon = undefined;
         this.featureGroup = new L.FeatureGroup();
@@ -19,7 +15,7 @@ export class PolyArea {
     }
     
     addAll(positions) {
-        for (var i = 0; i < positions.length; i ++) {
+        for (let i = 0; i < positions.length; i ++) {
             this.positions.push(positions[i]);
         }
         this.featureGroup.removeLayer(this.polygon);
@@ -33,7 +29,7 @@ export class PolyArea {
             this.featureGroup.removeLayer(this.polygon);
         }
 
-        if (this.positions.length == 0) {
+        if (this.positions.length === 0) {
             this.polygon = undefined;
         } else {
             this.polygon = this.toLeaflet();
@@ -52,19 +48,10 @@ export class PolyArea {
     }
 
     toLeaflet() {
-        var latLngs = [];
-
-        for (var i = 0; i < this.positions.length; i++) {
-            latLngs.push(this.positions[i].toCentreLatLng(this.map));
+        const latLngs = [];
+        for (let i = 0; i < this.positions.length; i++) {
+            latLngs.push(this.positions[i].toCentreLatLng());
         }
-
-        for (var i = 0; i < latLngs.length; i++) {
-            var point = this.map.project(latLngs[i], this.map.getMaxZoom());
-            point.x -= RS_TILE_WIDTH_PX / 2;
-            point.y += RS_TILE_HEIGHT_PX / 2;
-            latLngs[i] = this.map.unproject(point, this.map.getMaxZoom());
-        }
-
         return L.polygon(
             latLngs, {
                 color: "#33b5e5",
@@ -77,4 +64,4 @@ export class PolyArea {
     getName() {
         return "Area";
     }
-};
+}

@@ -4,6 +4,7 @@
 import '../external/leaflet.js';
 
 // Define L.DynamicIcons class
+if (typeof L !== 'undefined') {
 L.DynamicIcons = L.Layer.extend({
     options: {
         updateWhenIdle: L.Browser.mobile,
@@ -1308,6 +1309,9 @@ L.CrowdSourceMovement = L.DynamicIcons.extend({
 L.crowdSourceMovement = function (options) {
     return new L.CrowdSourceMovement(options);
 };
+} else {
+    console.error('Leaflet not found. Make sure Leaflet is properly loaded.');
+}
 
 // Export the L.DynamicIcons class
 export default L.DynamicIcons;

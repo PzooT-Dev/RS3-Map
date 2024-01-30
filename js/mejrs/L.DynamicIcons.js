@@ -1,10 +1,18 @@
-// L.DynamicIcons.js
+(function(factory, window) {
+    // define an AMD module that relies on 'leaflet'
+    if (typeof define === 'function' && define.amd) {
+        define(['leaflet'], factory);
 
-// Import Leaflet if not already imported
-import '../external/leaflet.js';
+        // define a Common JS module that relies on 'leaflet'
+    } else if (typeof exports === 'object') {
+        module.exports = factory(require('leaflet'));
+    }
 
-// Define L.DynamicIcons class
-if (typeof L !== 'undefined') {
+    // attach your plugin to the global 'L' variable
+    if (typeof window !== 'undefined' && window.L) {
+        factory(L);
+    }
+}(function(L) {
 L.DynamicIcons = L.Layer.extend({
     options: {
         updateWhenIdle: L.Browser.mobile,

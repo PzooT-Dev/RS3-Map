@@ -13,6 +13,8 @@ import { RegionLabelsControl } from './controls/region_labels_control.js';
 import { RegionLookupControl } from './controls/region_lookup_control.js';
 import { TitleLabel } from './controls/title_label.js';
 
+import './mejrs/L.DynamicIcons.js'; 
+
 $(document).ready(function () {
     const map = L.map.gameMap('map', {
         maxBounds: [[-1000, -1000], [12800 + 1000, 12800 + 1000]],

@@ -8,8 +8,6 @@ import { CoordinatesControl } from './controls/coordinates_control.js';
 import { LocalCoordinatesControl } from './controls/local_coordinates_control.js';
 import { RegionBaseCoordinatesControl } from './controls/region_base_coordinates_control.js';
 import { GridControl } from './controls/grid_control.js';
-// import { LocationLookupControl } from './controls/location_lookup_control.js';
-// import { MapLabelControl } from './controls/map_label_control.js';
 import { PlaneControl } from './controls/plane_control.js';
 import { RegionLabelsControl } from './controls/region_labels_control.js';
 import { RegionLookupControl } from './controls/region_lookup_control.js';
@@ -21,14 +19,25 @@ $(document).ready(function () {
         maxBoundsViscosity: 0.5,
         zoom: 2,
         zoomControl: false,
-        // Min and max zoom
         minZoom: -4,
         maxZoom: 4,
         doubleClickZoom: false,
-        // Fetch base maps and their border
         showMapBorder: true,
-        baseMaps: 'https://raw.githubusercontent.com/mejrs/data_rs3/master/basemaps.json',
     });
+
+    // Load basemaps from JSON file
+    $.getJSON('https://raw.githubusercontent.com/mejrs/data_rs3/master/basemaps.json', function (basemaps) {
+        basemaps.forEach(function (basemap) {
+            L.tileLayer(basemap.url, {
+                minZoom: basemap.minZoom,
+                maxZoom: basemap.maxZoom,
+                attribution: basemap.attribution,
+            }).addTo(map);
+        });
+    });
+
+    // Create a layer group for the icon layer
+    const iconLayerGroup = L.layerGroup();
 
     // Map squares layer
     L.tileLayer.main('https://raw.githubusercontent.com/mejrs/layers_rs3/master/mapsquares/{mapId}/{zoom}/{plane}_{x}_{y}.png', {
@@ -37,19 +46,21 @@ $(document).ready(function () {
         maxZoom: 4,
     }).addTo(map);
 
-    // Icons layer
-    L.tileLayer.main('https://raw.githubusercontent.com/mejrs/layers_rs3/master/icon_squares/{mapId}/{zoom}/{plane}_{x}_{y}.png', {
+    // Add the icon layer to the layer group and the map
+    const iconLayer = L.tileLayer.main('https://raw.githubusercontent.com/mejrs/layers_rs3/master/icon_squares/{mapId}/{zoom}/{plane}_{x}_{y}.png', {
         minZoom: -4,
         maxNativeZoom: 3,
         maxZoom: 4,
-    }).addTo(map);
+    }).addTo(iconLayerGroup);
 
-    // Zone squares
-    // L.tileLayer.main("https://raw.githubusercontent.com/mejrs/layers_rs3/master/zonemap_squares/{mapId}/{zoom}_0_{x}_{y}.png", {
-    //     minZoom: -4,
-    //     maxNativeZoom: 2,
-    //     maxZoom: 4,
-    // }).addTo(map);
+    // Overlay layers (toggleable layers)
+    const overlayLayers = {
+        'Icons': iconLayerGroup,
+        // Add more overlay layers if needed
+    };
+
+    // Add controls to the map
+    L.control.layers(null, overlayLayers).addTo(map);
 
     map.getContainer().focus();
 
@@ -59,8 +70,6 @@ $(document).ready(function () {
     map.addControl(new LocalCoordinatesControl());
     map.addControl(L.control.zoom());
     map.addControl(new PlaneControl());
-    // map.addControl(new LocationLookupControl());
-    // map.addControl(new MapLabelControl());
     map.addControl(new CollectionControl({ position: 'topright' }));
     map.addControl(new RegionLookupControl());
     map.addControl(new GridControl());

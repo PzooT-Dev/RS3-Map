@@ -44,7 +44,6 @@ $(document).ready(function () {
     const zoneLayerGroup = L.layerGroup();
     const teleportLayerGroup = L.layerGroup();
     const transportLayerGroup = L.layerGroup();
-    const labelLayerGroup = L.layerGroup();
     
     // Map squares layer
     L.tileLayer.main('https://raw.githubusercontent.com/mejrs/layers_rs3/master/mapsquares/{mapId}/{zoom}/{plane}_{x}_{y}.png', {
@@ -86,14 +85,8 @@ $(document).ready(function () {
         filterFn: (item) => item.type !== "teleport",
     }).addTo(transportLayerGroup);
 
-    const labelLayer = L.maplabelGroup({
-        API_KEY: "AIzaSyBrYT0-aS9VpW2Aenm-pJ2UCUhih8cZ4g8",
-        SHEET_ID: "1apnt91ud4GkWsfuxJTXdhrGjyGFL0hNz6jYDED3abX0",
-    }).addTo(labelLayerGroup);
-
     // Overlay layers (toggleable layers)
     const overlayLayers = {
-        'Labels': labelLayerGroup,
         'Icons': iconLayerGroup,
         'Areas': areaLayerGroup,
         'Zones': zoneLayerGroup,

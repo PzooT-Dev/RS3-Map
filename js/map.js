@@ -38,7 +38,12 @@ $(document).ready(function () {
 
     // Create a layer group for the icon layer
     const iconLayerGroup = L.layerGroup();
-
+    const areaLayerGroup = L.layerGroup();
+    const zoneLayerGroup = L.layerGroup();
+    const teleportLayerGroup = L.layerGroup();
+    const transportLayerGroup = L.layerGroup();
+    const labelLayerGroup = L.layerGroup();
+    
     // Map squares layer
     L.tileLayer.main('https://raw.githubusercontent.com/mejrs/layers_rs3/master/mapsquares/{mapId}/{zoom}/{plane}_{x}_{y}.png', {
         minZoom: -4,
@@ -57,7 +62,7 @@ $(document).ready(function () {
         minZoom: -4,
         maxNativeZoom: 3,
         maxZoom: 4,
-    }).addTo(areasLayerGroup);
+    }).addTo(areaLayerGroup);
 
     const zoneLayer = L.tileLayer.main("https://raw.githubusercontent.com/mejrs/layers_rs3/zonemap_squares/{mapId}/{zoom}_0_{x}_{y}.png", {
         minZoom: -4,
@@ -88,7 +93,7 @@ $(document).ready(function () {
     const overlayLayers = {
         'Labels': labelLayerGroup,
         'Icons': iconLayerGroup,
-        'Areas': areasLayerGroup,
+        'Areas': areaLayerGroup,
         'Zones': zoneLayerGroup,
         'Teleports': teleportLayerGroup,
         'Transports': transportLayerGroup,

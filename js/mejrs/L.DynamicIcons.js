@@ -1,7 +1,7 @@
 // L.DynamicIcons.js
 
 // Import Leaflet if not already imported
-import L from '../external/leaflet';
+import L from '../external/leaflet.js';
 
 // Define L.DynamicIcons class
 L.DynamicIcons = L.Layer.extend({

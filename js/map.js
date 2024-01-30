@@ -55,33 +55,33 @@ $(document).ready(function () {
     // Add the icon layer to the layer group and the map
     const iconLayer = L.tileLayer.main('https://raw.githubusercontent.com/mejrs/layers_rs3/master/icon_squares/{mapId}/{zoom}/{plane}_{x}_{y}.png', {
         minZoom: -4,
-        maxNativeZoom: 3,
+        maxNativeZoom: 2,
         maxZoom: 4,
     }).addTo(iconLayerGroup);
 
     const areasLayer = L.tileLayer.main("https://raw.githubusercontent.com/mejrs/layers_rs3/areas_squares/{mapId}/{zoom}/{plane}_{x}_{y}.png", {
         minZoom: -4,
-        maxNativeZoom: 3,
+        maxNativeZoom: 2,
         maxZoom: 4,
     }).addTo(areaLayerGroup);
 
     const zoneLayer = L.tileLayer.main("https://raw.githubusercontent.com/mejrs/layers_rs3/zonemap_squares/{mapId}/{zoom}_0_{x}_{y}.png", {
         minZoom: -4,
-        maxNativeZoom: 3,
+        maxNativeZoom: 2,
         maxZoom: 4,
     }).addTo(zoneLayerGroup);
 
     const teleportLayer = L.teleports({
         API_KEY: "AIzaSyBrYT0-aS9VpW2Aenm-pJ2UCUhih8cZ4g8",
         SHEET_ID: "1ZjKyAMUWa1qxFvBnmXwofNkRBkVfsizoGwp6rZylXXM",
-        minZoom: -3,
+        minZoom: -2,
         filterFn: (item) => item.type === "teleport",
     }).addTo(teleportLayerGroup);
 
     const transportLayer = L.teleports({
         API_KEY: "AIzaSyBrYT0-aS9VpW2Aenm-pJ2UCUhih8cZ4g8",
         SHEET_ID: "1ZjKyAMUWa1qxFvBnmXwofNkRBkVfsizoGwp6rZylXXM",
-        minZoom: -3,
+        minZoom: -2,
         filterFn: (item) => item.type !== "teleport",
     }).addTo(transportLayerGroup);
 

@@ -456,7 +456,7 @@ L.DynamicIcons = L.Layer.extend({
 
     createIcon: function (item) {
         let icon = L.icon({
-            iconUrl: "images/marker-icon.png",
+            iconUrl: "https://github.com/mejrs/mejrs.github.io/tree/master/images/marker-icon.png",
             iconSize: [25, 41],
             iconAnchor: [12, 41],
             popupAnchor: [1, -34],
@@ -464,7 +464,7 @@ L.DynamicIcons = L.Layer.extend({
             shadowSize: [41, 41],
         });
         let greyscaleIcon = L.icon({
-            iconUrl: "images/marker-icon-greyscale.png",
+            iconUrl: "https://github.com/mejrs/mejrs.github.io/tree/master/images/marker-icon-greyscale.png",
             iconSize: [25, 41],
             iconAnchor: [12, 41],
             popupAnchor: [1, -34],
@@ -662,13 +662,13 @@ L.Teleports = L.DynamicIcons.extend({
             var hash = MD5.md5(filename);
             item.iconUrl = "https://runescape.wiki/images/" + hash.substr(0, 1) + "/" + hash.substr(0, 2) + "/" + filename;
         } else if (item.actuallyInstance) {
-            item.iconUrl = "sprites/31407-0.png";
+            item.iconUrl = "https://github.com/mejrs/mejrs.github.io/tree/master/sprites/31407-0.png";
         } else if (JSON.stringify(item).includes("agility") || JSON.stringify(item).includes("Agility")) {
             //shortcut icon
-            item.iconUrl = "sprites/20763-0.png";
+            item.iconUrl = "https://github.com/mejrs/mejrs.github.io/tree/master/sprites/20763-0.png";
         } else {
             //travel icon
-            item.iconUrl = "sprites/20764-0.png";
+            item.iconUrl = "https://github.com/mejrs/mejrs.github.io/tree/master/sprites/20764-0.png";
         }
     },
 
@@ -679,7 +679,7 @@ L.Teleports = L.DynamicIcons.extend({
                 response.ok ? response.json().then((sheet) => sheet.values) : response.json().then((oopsie) => Promise.reject(new Error(oopsie.error.message)).then(() => { }, console.error))
             );
 
-            const wateryPromise = fetch(`data_rs3/keyed_watery.json`)
+            const wateryPromise = fetch(`https://github.com/mejrs/data_rs3/tree/master/data_rs3/keyed_watery.json`)
                 .then((response) => (response.ok ? response.json() : Promise.reject(new Error(response.status + " Error fetching " + response.url))))
                 .catch(console.error);
 
@@ -1035,7 +1035,7 @@ L.CustomParseTeleports = L.Teleports.extend({
         let icon =
             item.plane === this._map.getPlane()
                 ? L.icon({
-                    iconUrl: "images/marker-icon.png",
+                    iconUrl: "https://github.com/mejrs/mejrs.github.io/tree/master/images/marker-icon.png",
                     iconSize: [25, 41],
                     iconAnchor: [12, 41],
                     popupAnchor: [1, -34],
@@ -1043,7 +1043,7 @@ L.CustomParseTeleports = L.Teleports.extend({
                     shadowSize: [41, 41],
                 })
                 : L.icon({
-                    iconUrl: "images/marker-icon-greyscale.png",
+                    iconUrl: "https://github.com/mejrs/mejrs.github.io/tree/master/images/marker-icon-greyscale.png",
                     iconSize: [25, 41],
                     iconAnchor: [12, 41],
                     popupAnchor: [1, -34],

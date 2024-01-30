@@ -53,10 +53,45 @@ $(document).ready(function () {
         maxZoom: 4,
     }).addTo(iconLayerGroup);
 
+    const areasLayer = L.tileLayer.main("https://raw.githubusercontent.com/mejrs/layers_rs3/areas_squares/{mapId}/{zoom}/{plane}_{x}_{y}.png", {
+        minZoom: -4,
+        maxNativeZoom: 3,
+        maxZoom: 4,
+    }).addTo(areasLayerGroup);
+
+    const zoneLayer = L.tileLayer.main("https://raw.githubusercontent.com/mejrs/layers_rs3/zonemap_squares/{mapId}/{zoom}_0_{x}_{y}.png", {
+        minZoom: -4,
+        maxNativeZoom: 3,
+        maxZoom: 4,
+    }).addTo(zoneLayerGroup);
+
+    const teleportLayer = L.teleports({
+        API_KEY: "AIzaSyBrYT0-aS9VpW2Aenm-pJ2UCUhih8cZ4g8",
+        SHEET_ID: "1ZjKyAMUWa1qxFvBnmXwofNkRBkVfsizoGwp6rZylXXM",
+        minZoom: -3,
+        filterFn: (item) => item.type === "teleport",
+    }).addTo(teleportLayerGroup);
+
+    const transportLayer = L.teleports({
+        API_KEY: "AIzaSyBrYT0-aS9VpW2Aenm-pJ2UCUhih8cZ4g8",
+        SHEET_ID: "1ZjKyAMUWa1qxFvBnmXwofNkRBkVfsizoGwp6rZylXXM",
+        minZoom: -3,
+        filterFn: (item) => item.type !== "teleport",
+    }).addTo(transportLayerGroup);
+
+    const labelLayer = L.maplabelGroup({
+        API_KEY: "AIzaSyBrYT0-aS9VpW2Aenm-pJ2UCUhih8cZ4g8",
+        SHEET_ID: "1apnt91ud4GkWsfuxJTXdhrGjyGFL0hNz6jYDED3abX0",
+    }).addTo(labelLayerGroup);
+
     // Overlay layers (toggleable layers)
     const overlayLayers = {
+        'Labels': labelLayerGroup,
         'Icons': iconLayerGroup,
-        // Add more overlay layers if needed
+        'Areas': areasLayerGroup,
+        'Zones': zoneLayerGroup,
+        'Teleports': teleportLayerGroup,
+        'Transports': transportLayerGroup,
     };
 
     // Add controls to the map

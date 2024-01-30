@@ -15,6 +15,553 @@ import MD5 from "./MD5.js";
         factory(L);
     }
 }(function(L) {
+    L.TileLayer.Main = L.TileLayer.extend({
+    initialize: function (url, options) {
+        this._url = url;
+
+        L.setOptions(this, options);
+    },
+
+    onAdd: function (map) {
+        if (!this.options.errorTileUrl) {
+            console.warn(`The ${this.options.source} layer did not have its errorTileUrl option set. This is needed to stop flickering.`);
+        }
+        this.options.resolved_error_url = new URL(this.options.errorTileUrl, document.location).href;
+
+        map.on("erachange", (e) => {
+            return this.refresh(map._era);
+        });
+
+        return L.TileLayer.prototype.onAdd.call(this, map);
+    },
+
+    getTileUrl: function (coords) {
+        return L.Util.template(this._url, {
+            source: this.options.source,
+            mapId: this._map._mapId,
+            zoom: coords.z,
+            plane: this._map._plane || 0,
+            x: coords.x,
+            y: -(1 + coords.y),
+            era: this._map._era || this._map.options.default_era,
+        });
+    },
+
+    // Suppress 404 errors for loading tiles
+    // These are expected as trivial tiles are not included to save on storage space
+    createTile: function (coords, done) {
+        let tile = L.TileLayer.prototype.createTile.call(this, coords, done);
+        tile.onerror = (error) => error.preventDefault();
+        return tile;
+    },
+
+    // "fix" for flickering:
+    //
+    // https://github.com/Leaflet/Leaflet/issues/6659
+    // using impl from https://gist.github.com/barryhunter/e42f0c4756e34d5d07db4a170c7ec680
+    _refreshTileUrl: function (layer, tile, url, sentinel1, sentinel2) {
+        return new Promise((resolve, _reject) => {
+            //use a image in background, so that only replace the actual tile, once image is loaded in cache!
+            let img = new Image();
+
+            img.onload = () => {
+                L.Util.requestAnimFrame(() => {
+                    if (sentinel1 === sentinel2) {
+                        let el = tile.el;
+                        el.onload = resolve;
+                        el.onerror = resolve;
+
+                        el.src = url;
+                    } else {
+                        resolve();
+                        // a newer map is already loading, do nothing
+                    }
+                });
+            };
+            img.onerror = () => {
+                L.Util.requestAnimFrame(() => {
+                    if (sentinel1 === sentinel2 && tile.el.src !== this.options.resolved_error_url) {
+                        let el = tile.el;
+                        el.onload = resolve;
+                        el.onerror = resolve;
+
+                        el.src = layer.errorTileUrl;
+                    } else {
+                        resolve();
+                        // a newer map is already loading, do nothing
+                    }
+                });
+            };
+            img.src = url;
+        });
+    },
+    refresh: async function (sentinel) {
+        let sentinel_ref = `${sentinel}`;
+
+        let pending_states = [];
+
+        for (let tile of Object.values(this._tiles)) {
+            if (tile.current && (tile.active !== false)) {
+                let newsrc = this.getTileUrl(tile.coords);
+                let state = this._refreshTileUrl(this, tile, newsrc, sentinel, sentinel_ref);
+                pending_states.push(state);
+            }
+        }
+
+        await Promise.allSettled(pending_states);
+    },
+});
+
+L.tileLayer.main = function (url, options) {
+    return new L.TileLayer.Main(url, options);
+};
+
+L.Grid = L.GridLayer.extend({
+    initialize: function (options) {
+        options.maxNativeZoom = 2;
+        options.minNativeZoom = 2;
+        options.minZoom = 1;
+        L.setOptions(this, options);
+    },
+
+    createTile: function (coords) {
+        let tile = L.DomUtil.create("div", "grid");
+        tile.innerHTML = [coords.x, -(1 + coords.y)].join(", ");
+        return tile;
+    },
+
+    _update: function (center) {
+        if (this._map.getZoom() >= this.options.minZoom) {
+            return L.GridLayer.prototype._update.call(this, center);
+        }
+    },
+});
+
+L.grid = function (options) {
+    return new L.Grid(options);
+};
+
+L.Heatmap = L.GridLayer.extend({
+    initialize: function (options = {}) {
+        options.minZoom = 2;
+
+        //the zoom level at which 1 piece of collision data = 1 game square
+        options.granularity = 2;
+        //size of game square grid, must be 2^n
+        options.gridSize = 64;
+        options.bitShift = (options.gridSize - 1).toString(2).length;
+        //size of one game tile in px at above zoom
+        options.gameTilePx = 4;
+        options.tileSize = options.gameTilePx * options.gridSize;
+
+        options.maxRange = 100;
+
+        if (options.npcs && options.icons) {
+            this._npcIcons = this.array.toObject(options.npcs, options.icons);
+        }
+
+        L.setOptions(this, options);
+    },
+
+    onAdd: function (map) {
+        L.GridLayer.prototype.onAdd.call(this, map);
+
+        if (this.options.npcs.length || this.options.ids) {
+            this.fetchData(this.options.npcs, this.options.ids, this.options.range);
+        }
+    },
+
+    remove: function () {
+        this._markers.forEach((marker) => marker.remove());
+        L.GridLayer.prototype.remove.call(this);
+    },
+
+    getIds: function (names, ids) {
+        return (
+            Promise.resolve(
+                ids && ids.length
+                    ? ids
+                    : fetch(`${this.options.folder}/npc_name_collection.json`)
+                        .then((response) => response.json())
+
+                        .then((name_collection) => names.flatMap((name) => name_collection[name]))
+
+                        //remove any names not found
+                        .then((namedIds) => namedIds.filter(Number.isInteger))
+            )
+
+                .then((namedIds) =>
+                    fetch(`${this.options.folder}/npc_morph_collection.json`)
+                        .then((res) => res.json())
+                        .then((morphs) => namedIds.flatMap((id) => [...(morphs[id] ?? []), id]))
+                )
+                //unique elements
+                .then((ids) => Array.from(new Set(ids)))
+        );
+    },
+
+    fetchData: function (npcNames, npcIds, range) {
+        this.getIds(npcNames, npcIds).then((ids) => {
+            Promise.allSettled(ids.map((id) => fetch(`${this.options.folder}/npcids/npcid=${id}.json`)))
+
+                .then((responses) => Promise.all(responses.filter((res) => res.status === "fulfilled" && res.value.ok).map((res) => res.value.json())))
+                .then((data) => (data.length !== 0 ? data : Promise.reject(new Error("Unable to find any npcids."))))
+                .then((data) => data.flat())
+
+                //finds the map squares required
+                .then((npcs) => {
+                    let keys = this.array.unique(npcs.flatMap((npc) => this.getRange(npc, range)));
+
+                    //fetch collision data for these map squares
+                    Promise.allSettled(keys.map((key) => fetch(`${this.options.folder}/collisions/-1/${key}.json`)))
+                        .then((responses) => Promise.all(responses.filter((res) => res.status === "fulfilled" && res.value.ok).map((res) => res.value.json())))
+                        .then((mapData) => {
+                            //calculate all the data
+                            this.constructDataCache(mapData, keys, npcs);
+
+                            //start drawing tiles
+                            this.fire("heatdataready", {
+                                keys: this._heatData,
+                            });
+                        })
+                        .finally(this._map.addMessage(`Found ${npcs.length} instances of this npc`));
+                })
+                .catch((error) => {
+                    console.log(error);
+                    this._map.addMessage(`Unable to find instances of this npc.`);
+                });
+        });
+    },
+
+    _collisionData: undefined,
+
+    _heatData: undefined,
+
+    constructDataCache: function (mapData, keys, npcs) {
+        this._collisionData = this.array.toObject(keys, mapData);
+
+        this.constructNpcCache(keys, npcs);
+
+        if (this.options.showHeat) {
+            let heat = keys.map((key) => this.createHeatmap(key));
+            this._heatData = this.array.toObject(keys, heat);
+
+            this._maxHeat = this._eachMaxHeat.length ? Math.max.apply(null, this._eachMaxHeat) : undefined;
+        }
+    },
+
+    constructNpcCache: function (keys, npcs) {
+        npcs.forEach((npc) => this.getFeature(npc));
+
+        if (this._npcIcons) {
+            npcs.forEach((npc) => this.getIconUrl(npc));
+        }
+        this._markers = npcs.map((npc) => this.addMarker(npc, this._map));
+        this._npcData = npcs.filter((npc) => npc.feature);
+
+        this._featureCollection = this.array.unique(npcs.flatMap((npc) => npc.feature));
+    },
+    isInRange: function (key, npc, range) {
+        return this.getRange(npc, range).includes(key);
+    },
+    _eachMaxHeat: [],
+
+    createHeatmap: function (key) {
+        let mapData = this._collisionData[key];
+
+        let range = this.options.range;
+        let npcs = this._npcData.filter((npc) => this.isInRange(key, npc, range));
+
+        if (mapData === undefined || npcs.length === 0) {
+            return undefined;
+        }
+        let {
+            plane, // eslint-disable-line
+            i,
+            j,
+        } = this._decodeDataKey(key);
+        //console.log(this._npcData, npcs);
+
+        let npcsHeat = npcs.map((npc) => {
+            let npcHeat = this.array.zeros(64);
+            let localNpcX = npc.x - 64 * i;
+            let localNpcY = npc.y - 64 * j;
+            let drawRange = {
+                minX: Math.max(0, localNpcX - range),
+                maxX: Math.min(63, localNpcX + range),
+                minY: Math.max(0, localNpcY - range),
+                maxY: Math.min(63, localNpcY + range),
+            };
+
+            for (let i = drawRange.minX; i < drawRange.maxX + 1; i++) {
+                for (let j = drawRange.minY; j < drawRange.maxY + 1; j++) {
+                    npcHeat[i][j] = mapData[i][j].f === npc.feature ? 1 : 0;
+                }
+            }
+            return npcHeat;
+        });
+        let totalHeat = this.array.add(npcsHeat);
+        this._eachMaxHeat.push(Math.max.apply(null, totalHeat.flat()));
+        return totalHeat;
+        //console.log(key, npcsHeat);
+    },
+
+    //various functions acting on arrays
+    array: {
+        //Finds the value
+        maxValue: function (item) {
+            if (Array.isArray(item) && Array.isArray(item[0])) {
+                return this.maxValue(item.flat());
+            } else {
+                return Math.max.apply(null, item);
+            }
+        },
+
+        //similar to Python's numpy.zeros()
+        zeros: function (size) {
+            return Array(size)
+                .fill(0)
+                .map(() => Array(size).fill(0));
+        },
+
+        add: function (arrays) {
+            let newArray = this.zeros(64);
+            if (arrays.length === 0) {
+                console.log("No arrays were given");
+                return newArray;
+            }
+            return this.starMap(newArray, (_, i, j) => arrays.map((array) => array[i][j]).reduce((a, b) => a + b, 0));
+        },
+
+        //maps function fn over a 2d array, returning the resulting array
+        starMap: function (array, fn) {
+            return array.map((subarray, index, array) => subarray.map((value, jndex) => fn(value, index, jndex, array)));
+        },
+
+        //similar to Python's itertools.combinations()
+        combinations: function (plane, array1, array2) {
+            return array1.flatMap((d) => array2.map((v) => [plane, d, v]));
+        },
+
+        //runs function fn over a 2d array
+        starEach: function (array, fn) {
+            return array.forEach((subarray, index, array) => subarray.forEach((value, jndex) => fn(value, index, jndex, array)));
+        },
+
+        //similar to Python's numpy.unique()
+        unique: function (array) {
+            return Array.from(new Set(array));
+        },
+
+        //turns two arrays into a object of key:value pairs
+        toObject: function (keys, values) {
+            return keys.reduce(
+                (obj, k, i) => ({
+                    ...obj,
+                    [k]: values[i],
+                }),
+                {}
+            );
+        },
+    },
+
+    colors: {},
+
+    getColor: function (tileData) {
+        let key = tileData.toString();
+        if (!this.colors[key]) {
+            this.colors[key] = "rgba(" + parseInt((255 * tileData) / this._maxHeat) + ",0, 0, " + parseInt((100 * tileData) / this._maxHeat) / 100 + ")";
+        }
+        return this.colors[key];
+    },
+
+    textColors: {},
+
+    getTextColor: function (tileData) {
+        let key = tileData.toString();
+        if (!this.textColors[key]) {
+            //this.colors[key] = '#' + (0x1000000 + (Math.random()) * 0xffffff).toString(16).substr(1, 6) + "E6";
+            this.textColors[key] = "rgba( 255 ,255, 255, " + parseInt((100 * tileData) / this._maxHeat) / 100 + ")";
+        }
+        return this.textColors[key];
+    },
+
+    getIconUrl: function (npc) {
+        let filename = this._npcIcons[npc.name] + ".png";
+        if (filename) {
+            var hash = MD5.md5(filename);
+            npc.iconUrl = "https://runescape.wiki/images/" + hash.substr(0, 1) + "/" + hash.substr(0, 2) + "/" + filename;
+        }
+    },
+
+    _markers: [],
+
+    addMarker: function (npc, map) {
+        let icon = L.icon({
+            iconUrl: "images/marker-icon.png",
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            tooltipAnchor: [16, -28],
+            shadowSize: [41, 41],
+        });
+        let greyscaleIcon = L.icon({
+            iconUrl: "images/marker-icon-greyscale.png",
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            tooltipAnchor: [16, -28],
+            shadowSize: [41, 41],
+        });
+
+        let marker = L.marker([npc.y + 0.5, npc.x + 0.5], {
+            icon: npc.p === this._map.getPlane() ? icon : greyscaleIcon,
+        });
+
+        this._map.on("planechange", function (e) {
+            marker.setIcon(npc.p === e.newPlane ? icon : greyscaleIcon);
+        });
+
+        let popUpText = Object.entries(npc)
+            .map((x) => x.map((i) => (typeof i !== "string" ? JSON.stringify(i) : i)).join(" = "))
+            .join("<br>");
+        marker.bindPopup(popUpText, {
+            autoPan: false,
+        });
+        marker.addTo(map);
+
+        return marker;
+    },
+
+    getFeature: function (npc) {
+        let key = this._generateDataKey(npc);
+
+        npc.feature = this._collisionData[key] ? this._collisionData[key][npc.x & (this.options.gridSize - 1)][npc.y & (this.options.gridSize - 1)].f : null;
+    },
+
+    getRange: function (npc, range) {
+        let plane = npc.p;
+        let radiusX = this.radius(npc.x, range);
+        let radiusY = this.radius(npc.y, range);
+        let allKeys = this.array.combinations(plane, radiusX, radiusY).map((tile) => this._generateDataKey(tile));
+
+        return allKeys;
+    },
+
+    radius: function (center, radius) {
+        let start = (center - radius) >> this.options.bitShift;
+        let end = (center + radius) >> this.options.bitShift;
+        return Array.apply(null, Array(end - start + 1)).map((_, index) => index + start);
+    },
+
+    createTile: function (coords, done) {
+        var tileSize = this.getTileSize();
+        var tile = document.createElement("canvas");
+        tile.setAttribute("width", tileSize.x);
+        tile.setAttribute("height", tileSize.y);
+
+        let plane = this._map.getPlane();
+        let properX = coords.x >> (coords.z - 2);
+        let properY = -(1 + coords.y) >> (coords.z - 2);
+
+        var error;
+
+        let key = this._generateDataKey(plane, properX, properY);
+
+        if (this._heatData) {
+            if (this._heatData[key] !== undefined) {
+                this._drawTile(tile, coords, this._heatData[key]);
+            } else {
+                error = "tile not in cache";
+            }
+
+            //immediate callback
+            window.setTimeout(() => {
+                done(error, tile);
+            }, 0);
+        } else {
+            //defer drawing the tiles until data has loaded...
+            this.once("heatdataready", (e) => {
+                if (e.keys && e.keys[key]) {
+                    this._drawTile(tile, coords, e.keys[key]);
+                    //console.info("Successfully instantiated tile at", coords);
+                    done(error, tile);
+                } else {
+                    error = "tile not in cache";
+                    //console.info("Cancelled tile at", coords);
+                    done(error, tile);
+                }
+            });
+        }
+
+        return tile;
+    },
+
+    _drawTile: function (tile, coords, data) {
+        let pixelsInGameTile = this.options.gameTilePx * 2 ** (coords.z - this.options.granularity);
+        let gameTilesInTile = this.options.gridSize * 2 ** (this.options.granularity - coords.z);
+        let modifier = 2 ** (coords.z - this.options.granularity) - 1;
+
+        let startX = (coords.x & modifier) * gameTilesInTile;
+        let startY = (-(1 + coords.y) & modifier) * gameTilesInTile;
+
+        var ctx = tile.getContext("2d");
+
+        for (let i = startX; i < startX + gameTilesInTile; i++) {
+            for (let j = startY; j < startY + gameTilesInTile; j++) {
+                let tileData = data[i][j];
+                if (tileData) {
+                    this._drawRect(ctx, startX, startY, i, j, pixelsInGameTile, tileData);
+                }
+            }
+        }
+    },
+
+    _drawRect: function (ctx, startX, startY, i, j, pixelsInGameTile, tileData) {
+        if (i < 0 || j < 0 || i > 63 || j > 63) {
+            throw new RangeError("tried writing at " + i + "," + j);
+        }
+
+        //Transform from y increasing down to increasing up and account for zoom scale
+        let x = (i - startX) * pixelsInGameTile;
+        let y = this.getTileSize().y - (j + 1 - startY) * pixelsInGameTile;
+
+        ctx.fillStyle = this.getColor(tileData);
+        ctx.fillRect(x, y, pixelsInGameTile, pixelsInGameTile);
+        ctx.font = pixelsInGameTile + "px serif";
+
+        ctx.textBaseline = "middle";
+        ctx.textAlign = "center";
+
+        ctx.fillStyle = this.getTextColor(tileData);
+        ctx.fillText(tileData, x + 0.5 * pixelsInGameTile, y + 0.5 * pixelsInGameTile);
+    },
+
+    _generateDataKey: function (...args) {
+        args = args.flat();
+
+        if (typeof args[0] !== "object") {
+            return args.join("_");
+        } else {
+            return [args[0].p, args[0].x >> this.options.bitShift, args[0].y >> this.options.bitShift].join("_");
+        }
+    },
+
+    _decodeDataKey: function (input) {
+        let numbers = input.match(/\d+/g).map(Number);
+
+        return {
+            plane: numbers[0],
+            i: numbers[1],
+            j: numbers[2],
+        };
+    },
+});
+
+L.heatmap = function (options) {
+    return new L.Heatmap(options);
+};
+
 L.DynamicIcons = L.Layer.extend({
     options: {
         updateWhenIdle: L.Browser.mobile,
